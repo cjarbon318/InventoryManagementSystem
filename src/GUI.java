@@ -19,8 +19,6 @@ public class GUI {
         mainPanel.setLayout(new GridLayout(2, 1));
 
         JButton enterNewProductButton = new JButton("Add new product to inventory");
-
-
         enterNewProductButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

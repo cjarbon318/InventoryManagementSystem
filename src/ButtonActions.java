@@ -1,21 +1,27 @@
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.*;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.List;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
-import java.awt.*;
 import java.util.ArrayList;
+import java.util.List;
 
 public class ButtonActions {
-    private static List<Product> productInventory = new ArrayList<>();
 
-    // create a method to show the enter new product screen and add the product to the inventory
+     private static List<Product> productInventory = new ArrayList<>();
+
+    //create a method to show the enter new product screen and add the product to the inventory
     public static void showEnterNewProductScreen() {
         JFrame enterNewProductFrame = new JFrame("Enter New Product to Inventory");
         enterNewProductFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -23,6 +29,7 @@ public class ButtonActions {
         JPanel newProductPanel = new JPanel();
         newProductPanel.setLayout(new BoxLayout(newProductPanel, BoxLayout.Y_AXIS));
 
+        
 
         JTextField productNameField = new JTextField(20);
         JTextField supplierField = new JTextField(20);
@@ -45,17 +52,45 @@ public class ButtonActions {
  
         // add an action listener to the submit button
         // EDIT  to make to sqlite here 
+
         submitButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Product newProduct = new Product(
-                        productNameField.getText(),
-                        supplierField.getText(),
-                        Float.parseFloat(quantityField.getText()),
-                        Double.parseDouble(priceField.getText()));
-                productInventory.add(newProduct);
-                JOptionPane.showMessageDialog(null, "Product Added!");
-                enterNewProductFrame.dispose();
+             Product newProduct = new Product(
+                productNameField.getText(),
+                supplierField.getText(),
+                Float.parseFloat(quantityField.getText()),
+                Double.parseDouble(priceField.getText()));
+                System.out.println("I am here");
+                try {
+                    // Establish a connection to the SQLite database
+                    Connection conn = DriverManager.getConnection("jdbc:sqlite:/Users/carliarbon/infosys.db");
+        
+                    // SQL statement to insert product data into the database
+                    String sql = "INSERT INTO products (product_name, supplier, quantity, price) VALUES (?, ?, ?, ?)";
+                    
+                    // Create a prepared statement with the SQL statement
+                    PreparedStatement pstmt = conn.prepareStatement(sql);
+                    pstmt.setString(1, newProduct.getProduct());
+                    pstmt.setString(2, newProduct.getSupplier());
+                    pstmt.setFloat(3, newProduct.getQuantity());
+                    pstmt.setDouble(4, newProduct.getPrice());
+        
+                    // Execute the statement
+                    pstmt.executeUpdate();
+        
+                    // Close the resources
+                    pstmt.close();
+                    conn.close();
+        
+                    JOptionPane.showMessageDialog(null, "Product Added!");
+        
+                    // Dispose the frame after adding the product
+                    enterNewProductFrame.dispose();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "Error: Unable to add product to database.");
+                }
             }
         });
         
@@ -69,7 +104,7 @@ public class ButtonActions {
         enterNewProductFrame.setVisible(true);
     }
     
-// create a method to show the inventory screen
+//create a method to show the inventory screen
     public static void showInventoryScreen() {
         JFrame productInventoryFrame = new JFrame("Inventory List for Company XYZ");
         productInventoryFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -113,15 +148,43 @@ public class ButtonActions {
         // Create a panel for buttons
         JPanel buttonPanel = new JPanel();
 
-        // EDIT to write to sqlite here
+         // Add a button to delete the selected entry
+       
         JButton deleteButton = new JButton("Delete Selected Entry");
         deleteButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 int selectedRow = productTable.getSelectedRow();
                 if (selectedRow != -1) {
+                    // Remove the row from the table model
                     tableModel.removeRow(selectedRow);
-                    productInventory.remove(selectedRow);
+                    
+                    // Remove the product from the product inventory list
+                    Product removedProduct = productInventory.remove(selectedRow);
+        
+                    // Delete the product from the SQLite database
+                    try {
+                      
+                        Connection conn = DriverManager.getConnection("jdbc:sqlite:/Users/carliarbon/infosys.db");
+    
+                        String sql = "DELETE FROM products WHERE product_name = ?";
+                        
+                        // Create a prepared statement with the SQL statement
+                        PreparedStatement pstmt = conn.prepareStatement(sql);
+                        pstmt.setString(1, removedProduct.getProduct());
+        
+                        // Execute the statement
+                        pstmt.executeUpdate();
+        
+                        // Close the resources
+                        pstmt.close();
+                        conn.close();
+        
+                        JOptionPane.showMessageDialog(null, "Selected entry deleted.");
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                        JOptionPane.showMessageDialog(null, "Error: Unable to delete entry from database.");
+                    }
                 } else {
                     JOptionPane.showMessageDialog(null, "Please select an entry to delete.");
                 }
@@ -146,15 +209,21 @@ public class ButtonActions {
                 // Invoke a file chooser dialog to select the destination to save the CSV file
                 JFileChooser fileChooser = new JFileChooser();
                 int userSelection = fileChooser.showSaveDialog(null);
-
+        
                 if (userSelection == JFileChooser.APPROVE_OPTION) {
                     File fileToSave = fileChooser.getSelectedFile();
                     try {
-                        // Write inventory data to the selected file
+                        // Save inventory data to the selected file
                         writeInventoryToCSV(fileToSave, productInventory);
                         JOptionPane.showMessageDialog(null, "Inventory saved as CSV!");
+        
+                        // Save inventory data to SQLite database
+                        saveInventoryToDatabase(productInventory);
                     } catch (IOException ex) {
                         JOptionPane.showMessageDialog(null, "Error saving CSV file: " + ex.getMessage());
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                        JOptionPane.showMessageDialog(null, "Error saving inventory to database: " + ex.getMessage());
                     }
                 }
             }
@@ -180,21 +249,38 @@ public class ButtonActions {
 
     }
 // create a method to write the inventory to a CSV file
-// EDIT to write to sqlite here
-    private static void writeInventoryToCSV(File file, List<Product> inventory) throws IOException {
-        try (FileWriter writer = new FileWriter(file)) {
-            // Write header
-            writer.write("Product, Price, Supplier, Quantity, Total Price\n");
 
-            // Write each product entry
+private static void writeInventoryToCSV(File file, List<Product> inventory) throws IOException {
+    try (FileWriter writer = new FileWriter(file)) {
+        for (Product product : inventory) {
+            writer.write(product.getProduct() + "," +
+                         product.getSupplier() + "," +
+                         product.getQuantity() + "," +
+                         product.getPrice() + "\n");
+        }
+    }
+}
+
+// Method to save inventory data to SQLite database
+private static void saveInventoryToDatabase(List<Product> inventory) throws SQLException {
+    // Establish a connection to the SQLite database
+    try (Connection conn = DriverManager.getConnection("jdbc:sqlite:/Users/carliarbon/infosys.db")) {
+        // Clear existing data
+        try (PreparedStatement clearStmt = conn.prepareStatement("DELETE FROM products")) {
+            clearStmt.executeUpdate();
+        }
+
+        // Insert new inventory data using prepared statements
+        String sql = "INSERT INTO products (product_name, supplier, quantity, price) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             for (Product product : inventory) {
-                writer.write(product.getProduct() + ", ");
-                writer.write(product.getPrice() + ", ");
-                writer.write(product.getSupplier() + ", ");
-                writer.write(product.getQuantity() + ", ");
-                writer.write((product.getPrice() * product.getQuantity()) + "\n");
+                pstmt.setString(1, product.getProduct());
+                pstmt.setString(2, product.getSupplier());
+                pstmt.setFloat(3, product.getQuantity());
+                pstmt.setDouble(4, product.getPrice());
+                pstmt.executeUpdate();
             }
         }
     }
-
+}
 }
