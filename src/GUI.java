@@ -1,17 +1,15 @@
-import javax.swing.*;
 
+import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 
 public class GUI {
 
-    public static void main(String[] args) throws Exception {
-        SwingUtilities.invokeLater(() -> createAndShowGUI());
+    public GUI() {
+        createAndShowGUI();
     }
-    // create a method to show the main screen and add buttons to navigate to other screens
-    private static void createAndShowGUI() {
+
+    private void createAndShowGUI() {
         JFrame frame = new JFrame("Inventory Management System");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -19,20 +17,10 @@ public class GUI {
         mainPanel.setLayout(new GridLayout(2, 1));
 
         JButton enterNewProductButton = new JButton("Add new product to inventory");
-        enterNewProductButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                ButtonActions.showEnterNewProductScreen();
-            }
-        });
+        enterNewProductButton.addActionListener(e -> ButtonActions.showEnterNewProductScreen());
 
         JButton viewInventoryButton = new JButton("View Inventory");
-        viewInventoryButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                ButtonActions.showInventoryScreen();
-            }
-        }); 
+        viewInventoryButton.addActionListener(e -> ButtonActions.showInventoryScreen());
 
         mainPanel.add(enterNewProductButton);
         mainPanel.add(viewInventoryButton);
