@@ -12,6 +12,7 @@ import javax.swing.table.DefaultTableModel;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import java.util.ArrayList;
@@ -65,7 +66,7 @@ public class ButtonActions {
                     Connection conn = DriverManager.getConnection("jdbc:sqlite:/Users/carliarbon/infosys.db");
 
                     // Create a SQL statement to insert the new product into the database
-                    String sql = "INSERT INTO invmgmt (product_name, supplier, quantity, price) VALUES (?, ?, ?, ?)";
+                    String sql = "INSERT INTO invmgmt (product, supplier, quantity, price) VALUES (?, ?, ?, ?)";
 
                     // Create a prepared statement with the SQL statement
                     PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -102,45 +103,80 @@ public class ButtonActions {
         enterNewProductFrame.setVisible(true);
     }
 
-    // create a method to show the inventory screen
     public static void showInventoryScreen() {
         JFrame productInventoryFrame = new JFrame("Inventory List for Company XYZ");
         productInventoryFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-
+    
         // Create a JTable with a DefaultTableModel
         DefaultTableModel tableModel = new DefaultTableModel();
         JTable productTable = new JTable(tableModel);
-
+    
         // Add columns to the table
         tableModel.addColumn("Product");
         tableModel.addColumn("Price");
         tableModel.addColumn("Supplier");
         tableModel.addColumn("Quantity");
         tableModel.addColumn("Total Price of Inventory");
-
-        Double totalSum = (double) 0;
-        for (Product product : productInventory) {
-            totalSum += product.getPrice() * product.getQuantity();
+    
+        try {
+            // Establishing a database connection
+            Connection connection = DriverManager.getConnection("jdbc:sqlite:/Users/carliarbon/infosys.db");
+    
+            // Creating a statement
+            Statement statement = connection.createStatement();
+    
+            // Executing a query to retrieve data
+            String query = "SELECT * FROM invmgmt"; // Assuming table name is invmgmt
+            ResultSet resultSet = statement.executeQuery(query);
+    
+            double totalSum = 0;
+    
+            // Iterating through the result set and populating the table
+            while (resultSet.next()) {
+                String productName = resultSet.getString("product");
+                double price = resultSet.getDouble("price");
+                String supplier = resultSet.getString("supplier");
+                int quantity = resultSet.getInt("quantity");
+                double totalPrice = price * quantity;
+                totalSum += totalPrice;
+    
+                String formattedPrice = String.format("%.2f", price);
+                String formattedTotalPrice = String.format("%.2f", totalPrice);
+    
+                tableModel.addRow(new Object[]{
+                        productName,
+                        formattedPrice,
+                        supplier,
+                        quantity,
+                        formattedTotalPrice
+                });
+            }
+    
+            // Closing resources
+            resultSet.close();
+            statement.close();
+            connection.close();
+            
+            String formattedTotalSum = String.format("%.2f", totalSum);
+            // Add the total sum label
+            JLabel totalSumLabel = new JLabel("Total Sum of Inventory: $" + formattedTotalSum);
+            productInventoryFrame.getContentPane().add(totalSumLabel, BorderLayout.SOUTH);
+    
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // Handle exceptions
         }
-        String formattedTotalSum = String.format("%.2f", totalSum);
-
-        for (Product product : productInventory) {
-            String formattedPrice = String.format("%.2f", product.getPrice());
-            double totalPrice = product.getPrice() * product.getQuantity();
-
-            String formattedTotalPrice = String.format("%.2f", totalPrice);
-
-            tableModel.addRow(new Object[] {
-                    product.getProduct(),
-                    formattedPrice,
-                    product.getSupplier(),
-                    product.getQuantity(),
-                    formattedTotalPrice
-            });
-        }
+    }}
+    
+        // Add the table to the frame
+        productInventoryFrame.add(new JScrollPane(productTable));
+        productInventoryFrame.pack();
+        productInventoryFrame.setVisible(true);
+    
+    
 
         // Add the table to a JScrollPane for scrollability
-        JScrollPane scrollPane = new JScrollPane(productTable);
+        // JScrollPane scrollPane = new JScrollPane(productTable);
 
         // Create a panel for buttons
         JPanel buttonPanel = new JPanel();
@@ -164,7 +200,7 @@ public class ButtonActions {
 
                         Connection conn = DriverManager.getConnection("jdbc:sqlite:/Users/carliarbon/infosys.db");
 
-                        String sql = "DELETE FROM invmgmt  WHERE product_name = ?";
+                        String sql = "DELETE FROM invmgmt  WHERE product = ?";
 
                         // Create a prepared statement with the SQL statement
                         PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -268,7 +304,7 @@ public class ButtonActions {
             }
 
             // Insert new inventory data using prepared statements
-            String sql = "INSERT INTO infosys (product_name, supplier, quantity, price) VALUES (?, ?, ?, ?)";
+            String sql = "INSERT INTO infosys (product, supplier, quantity, price) VALUES (?, ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 for (Product product : inventory) {
                     pstmt.setString(1, product.getProduct());
