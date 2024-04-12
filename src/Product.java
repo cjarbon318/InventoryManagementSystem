@@ -1,17 +1,21 @@
 
+// The Product class represents a product with its attributes such as name,
+//  supplier, quantity, and price.
 
 public class Product {
     String Product;
     String Supplier;
     Float Quantity;
     Double Price;
-    
+
+    // getters and setters
+
     public String getProduct() {
         return Product;
     }
 
-    public void setProdut(String produt) {
-        Product = produt;
+    public void setProduct(String product) {
+        Product = product;
     }
 
     public String getSupplier() {
@@ -38,6 +42,12 @@ public class Product {
         Price = price;
     }
 
+    // Constructs a new Product object with the specified attributes.
+    // @param product The name of the product.
+    // @param supplier The supplier of the product.
+    // @param quantity The quantity of the product.
+    // @param price The price of the product.
+
     public Product(String product, String supplier, Float quantity, Double price) {
         Product = product;
         Supplier = supplier;
@@ -45,4 +55,3 @@ public class Product {
         Price = price;
     }
 }
-

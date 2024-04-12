@@ -18,25 +18,24 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-
-import java.util.ArrayList;
-import java.util.List;
-
-
-
+/**
+ * The ButtonActions class represents a collection of static methods that handle button actions
+ * in the user interface. It provides methods for showing the enter new product screen, writing
+ * the inventory data to a CSV file, and showing the inventory screen. These methods are used in
+ * the main application to handle user interactions with buttons.
+ */
 public class ButtonActions {
 
-    private static List<Product> productInventory = new ArrayList<>();
-
-    // create a method to show the enter new product screen and add the product to
-    // the inventory
+    // create a method to show the enter new product screen and add the product to the inventory database
     public static void showEnterNewProductScreen() {
         JFrame enterNewProductFrame = new JFrame("Enter New Product to Inventory");
         enterNewProductFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
+        // Create a panel for the new product form
         JPanel newProductPanel = new JPanel();
         newProductPanel.setLayout(new BoxLayout(newProductPanel, BoxLayout.Y_AXIS));
 
+        // Create text fields for the product name, supplier, price, and quantity
         JTextField productNameField = new JTextField(20);
         JTextField supplierField = new JTextField(20);
         JTextField priceField = new JTextField(20);
@@ -56,8 +55,10 @@ public class ButtonActions {
         JButton submitButton = new JButton("Submit");
         submitButtonPanel.add(submitButton, BorderLayout.CENTER);
 
-        // add an action listener to the submit button
-        // EDIT to make to sqlite here
+        // add an action listener to the submit button to add the product to the
+        // database
+        // by establishing a connection to the SQLite database and then creating a SQL
+        // statement to insert the new product into the database
         submitButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -66,7 +67,7 @@ public class ButtonActions {
                         supplierField.getText(),
                         Float.parseFloat(quantityField.getText()),
                         Double.parseDouble(priceField.getText()));
-                // System.out.println("I am here");
+
                 try {
                     // Establish a connection to the SQLite database
                     Connection conn = DriverManager.getConnection("jdbc:sqlite:/Users/carliarbon/infosys.db");
@@ -108,65 +109,74 @@ public class ButtonActions {
         enterNewProductFrame.setLocationRelativeTo(null);
         enterNewProductFrame.setVisible(true);
     }
+
+    // create a method to write the inventory data to a CSV file
+    // This method writes the inventory data to a CSV file by executing a SQL query
+    // to retrieve the inventory data from the SQLite database and then writing the
+    // data to a CSV file using
+    // a FileWriter.
     private static void writeInventoryToCSV(File fileToSave) throws IOException, SQLException {
         System.out.println("Writing inventory data to CSV...");
         // SQLite database URL
         String url = "jdbc:sqlite:/Users/carliarbon/infosys.db";
-    
+
         // SQL query to retrieve inventory data
         String query = "SELECT * FROM invmgmt";
-    
+
         try (Connection connection = DriverManager.getConnection(url);
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(query);
-             FileWriter writer = new FileWriter(fileToSave)) {
-    
+                Statement statement = connection.createStatement();
+                ResultSet resultSet = statement.executeQuery(query);
+                FileWriter writer = new FileWriter(fileToSave)) {
+
             // Write CSV header
             writer.write("Product,Supplier,Quantity,Price\n");
-    
+
             // Write inventory data to CSV
             while (resultSet.next()) {
                 String product = resultSet.getString("product");
                 String supplier = resultSet.getString("supplier");
                 int quantity = resultSet.getInt("quantity");
                 double price = resultSet.getDouble("price");
-    
+
                 // Write data row to CSV
                 writer.write(product + "," + supplier + "," + quantity + "," + price + "\n");
             }
-    
+
             System.out.println("Inventory data written to CSV successfully.");
         }
     }
 
+    // create a method to show the inventory screen when the user hits the View
+    // Inventory button
     public static void showInventoryScreen() {
         JFrame productInventoryFrame = new JFrame("Inventory List for Company XYZ");
         productInventoryFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-    
+
         // Create a JTable with a DefaultTableModel
         DefaultTableModel tableModel = new DefaultTableModel();
         JTable productTable = new JTable(tableModel);
-    
+
         // Add columns to the table
         tableModel.addColumn("Product");
         tableModel.addColumn("Price");
         tableModel.addColumn("Supplier");
         tableModel.addColumn("Quantity");
         tableModel.addColumn("Total Price of Inventory");
-    
+
         double totalSum = 0; // Declare and initialize totalSum here
-    
+
+        // Establish a connection to the SQLite database and retrieve the inventory data
         try {
             // Establishing a database connection
             Connection connection = DriverManager.getConnection("jdbc:sqlite:/Users/carliarbon/infosys.db");
-    
+
             // Creating a statement
             Statement statement = connection.createStatement();
-    
+
             // Executing a query to retrieve data
             String query = "SELECT * FROM invmgmt"; // Assuming table name is invmgmt
             ResultSet resultSet = statement.executeQuery(query);
-    
+
             // Iterating through the result set and populating the table
             while (resultSet.next()) {
                 String productName = resultSet.getString("product");
@@ -174,12 +184,13 @@ public class ButtonActions {
                 String supplier = resultSet.getString("supplier");
                 int quantity = resultSet.getInt("quantity");
                 double totalPrice = price * quantity;
-                totalSum += totalPrice;
-    
-                String formattedPrice = String.format("%.2f", price);
-                String formattedTotalPrice = String.format("%.2f", totalPrice);
-    
-                tableModel.addRow(new Object[]{
+                totalSum += totalPrice; // Update totalSum here
+
+                String formattedPrice = String.format("%.2f", price); // Format price to 2 decimal places
+                String formattedTotalPrice = String.format("%.2f", totalPrice); // Format total price to 2 decimal places
+
+                // Add the data to the table model
+                tableModel.addRow(new Object[] {
                         productName,
                         formattedPrice,
                         supplier,
@@ -187,31 +198,31 @@ public class ButtonActions {
                         formattedTotalPrice
                 });
             }
-    
+
             // Closing resources
             resultSet.close();
             statement.close();
             connection.close();
-    
+
         } catch (SQLException e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(null, "Error: Unable to retrieve data from the database.");
             return; // Exit method if an exception occurs
         }
-    
+
         // Add the total sum label
         double formattedTotalSum = Math.round(totalSum * 100.0) / 100.0;
         JLabel totalSumLabel = new JLabel("Total Sum of Inventory: $" + formattedTotalSum);
         productInventoryFrame.getContentPane().add(totalSumLabel, BorderLayout.SOUTH);
-    
+
         // Add the table to the frame
         productInventoryFrame.add(new JScrollPane(productTable), BorderLayout.CENTER);
-    
+
         // Add the button panel
         JPanel buttonPanel = new JPanel();
         JButton deleteButton = new JButton("Delete Selected Entry");
         buttonPanel.add(deleteButton);
-    
+
         // Add the delete button
         deleteButton.addActionListener(new ActionListener() {
             @Override
@@ -219,18 +230,20 @@ public class ButtonActions {
                 int selectedRow = productTable.getSelectedRow();
                 if (selectedRow != -1) {
                     String productName = (String) productTable.getValueAt(selectedRow, 0);
-    
+
+                    // Delete the selected entry from the database
                     try {
+                        // Establish a connection to the SQLite database
                         Connection conn = DriverManager.getConnection("jdbc:sqlite:/Users/carliarbon/infosys.db");
-    
+
                         String sql = "DELETE FROM invmgmt WHERE product = ?";
-                        PreparedStatement pstmt = conn.prepareStatement(sql);
+                        PreparedStatement pstmt = conn.prepareStatement(sql); // Create a prepared statement with the SQL statement to delete the entry
                         pstmt.setString(1, productName);
                         pstmt.executeUpdate();
                         pstmt.close();
                         conn.close();
-    
-                        tableModel.removeRow(selectedRow);
+
+                        tableModel.removeRow(selectedRow); // Remove the selected row from the table model
                         JOptionPane.showMessageDialog(null, "Selected entry deleted.");
                     } catch (SQLException ex) {
                         ex.printStackTrace();
@@ -241,7 +254,7 @@ public class ButtonActions {
                 }
             }
         });
-    
+
         // Add a selection listener to the table
         productTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
             @Override
@@ -258,7 +271,7 @@ public class ButtonActions {
                 }
             }
         });
-    
+
         // Add a button to save changes
         JButton saveChangesButton = new JButton("Save Changes");
         saveChangesButton.addActionListener(new ActionListener() {
@@ -267,16 +280,17 @@ public class ButtonActions {
                 JOptionPane.showMessageDialog(null, "Changes Saved!");
             }
         });
-        
+
         // Add a button to save inventory data as CSV
         JButton saveCsvButton = new JButton("Save as CSV");
         saveCsvButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 // Invoke a file chooser dialog to select the destination to save the CSV file
+
                 JFileChooser fileChooser = new JFileChooser();
                 int userSelection = fileChooser.showSaveDialog(null);
-        
+
                 if (userSelection == JFileChooser.APPROVE_OPTION) {
                     File fileToSave = fileChooser.getSelectedFile();
                     try {
@@ -287,28 +301,27 @@ public class ButtonActions {
                         JOptionPane.showMessageDialog(null, "Error saving CSV file: " + ex.getMessage());
                     } catch (SQLException ex) {
                         ex.printStackTrace();
-                        JOptionPane.showMessageDialog(null, "Error retrieving inventory data from database: " + ex.getMessage());
+                        JOptionPane.showMessageDialog(null,
+                                "Error retrieving inventory data from database: " + ex.getMessage());
                     }
                 }
             }
         });
-        
 
         // Add buttons to buttonPanel
         buttonPanel.add(deleteButton);
         buttonPanel.add(saveChangesButton);
         buttonPanel.add(saveCsvButton);
-        
+
         JPanel inventoryPanel = new JPanel();
         inventoryPanel.setLayout(new BorderLayout());
         inventoryPanel.add(new JScrollPane(productTable), BorderLayout.CENTER);
         inventoryPanel.add(buttonPanel, BorderLayout.SOUTH);
-    
+
+        // Add the inventory panel to the frame
         productInventoryFrame.getContentPane().add(inventoryPanel);
         productInventoryFrame.setSize(800, 400);
         productInventoryFrame.setLocationRelativeTo(null);
         productInventoryFrame.setVisible(true);
     }
 }
-
-    
